@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -24,9 +26,11 @@ export class UserService {
       },
     });
 
+    delete user.password;
     if (!user) {
       throw new NotFoundException('User not found');
     }
+
     return user;
   }
   async getByEmail(email: string) {
@@ -42,6 +46,8 @@ export class UserService {
         person: true,
       },
     });
+
+    delete user.password;
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -87,7 +93,7 @@ export class UserService {
     if (user) {
       throw new BadRequestException('Email already exists');
     }
-    return this.prisma.user.create({
+    const userCreated = await this.prisma.user.create({
       data: {
         person: {
           create: {
@@ -98,11 +104,77 @@ export class UserService {
           },
         },
         email,
-        password,
+        password: bcrypt.hashSync(password, 10),
       },
       include: {
         person: true,
       },
     });
+    delete userCreated.password;
+
+    return userCreated;
+  }
+  async update(
+    id: number,
+    {
+      name,
+      email,
+      birthAt,
+      phone,
+      document,
+    }: {
+      name?: string;
+      email?: string;
+      birthAt?: Date;
+      phone?: string;
+      document?: string;
+    },
+  ) {
+    id = Number(id);
+
+    if (isNaN(id)) {
+      throw new BadRequestException('ID is not a number');
+    }
+
+    const dataUser = {} as Prisma.UserUpdateInput;
+    const dataPerson = {} as Prisma.PersonUpdateInput;
+
+    if (name) {
+      dataPerson.name = name;
+    }
+    if (birthAt) {
+      dataPerson.birthAt = birthAt;
+    }
+    if (phone) {
+      dataPerson.phone = phone;
+    }
+    if (document) {
+      dataPerson.document = document;
+    }
+    if (email) {
+      dataUser.email = email;
+    }
+
+    const user = await this.get(id);
+
+    if (dataPerson) {
+      await this.prisma.person.update({
+        where: {
+          id: user.personId,
+        },
+        data: dataPerson,
+      });
+    }
+
+    if (dataUser) {
+      await this.prisma.user.update({
+        where: {
+          id: user.personId,
+        },
+        data: dataUser,
+      });
+    }
+
+    return this.get(id);
   }
 }
