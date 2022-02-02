@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user.service';
 
@@ -25,5 +25,14 @@ export class AuthService {
     return {
       token,
     };
+  }
+
+  async decodeToken(token: string) {
+    try {
+      await this.jwtService.verify(token);
+    } catch (e) {
+      throw new UnauthorizedException('Access denied');
+    }
+    return this.jwtService.decode(token);
   }
 }
