@@ -4,11 +4,12 @@ import {
   Controller,
   Get,
   Post,
-  Headers,
   UseGuards,
 } from '@nestjs/common';
 import { parse } from 'date-fns';
-import { UserService } from '../user.service';
+import { User } from 'src/user/user.decorator';
+import { UserService } from 'src/user/user.service';
+import { Auth } from './auth.decorator';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 
@@ -64,9 +65,10 @@ export class AuthController {
   }
   @UseGuards(AuthGuard)
   @Get('me')
-  async me() {
+  async me(@Auth() auth, @User() user) {
     return {
-      success: true,
+      auth,
+      user,
     };
   }
 }
