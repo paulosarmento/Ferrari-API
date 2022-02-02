@@ -1,10 +1,14 @@
 import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
 import { parse } from 'date-fns';
 import { UserService } from '../user.service';
+import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private userService: UserService) {}
+  constructor(
+    private userService: UserService,
+    private authService: AuthService,
+  ) {}
 
   @Post()
   async verifyEmail(@Body('email') email) {
@@ -31,7 +35,7 @@ export class AuthController {
       }
     }
 
-    return this.userService.create({
+    const user = await this.userService.create({
       name,
       email,
       password,
@@ -39,5 +43,14 @@ export class AuthController {
       document,
       birthAt,
     });
+
+    const token = await this.authService.getToken(user.id);
+
+    return { user, token };
+  }
+
+  @Post('login')
+  async login(@Body('email') email, @Body('password') password) {
+    return this.authService.login({ email, password });
   }
 }
