@@ -8,10 +8,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { parse } from 'date-fns';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   async get(id: number, hash = false) {
     id = Number(id);
@@ -206,6 +210,15 @@ export class UserService {
     });
 
     delete userUpdated.password;
+
+    await this.mailService.send({
+      to: userUpdated.email,
+      subject: 'Senha Alterada com sucesso!',
+      template: 'reset-password-confirm',
+      data: {
+        name: userUpdated.person.name,
+      },
+    });
 
     return userUpdated;
   }
