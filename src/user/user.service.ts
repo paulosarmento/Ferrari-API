@@ -49,7 +49,6 @@ export class UserService {
         person: true,
       },
     });
-
     delete user.password;
 
     if (!user) {
