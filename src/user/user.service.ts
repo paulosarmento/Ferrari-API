@@ -10,7 +10,13 @@ import { Prisma } from '@prisma/client';
 import { parse } from 'date-fns';
 import { MailService } from 'src/mail/mail.service';
 import { join } from 'path';
-import { existsSync, renameSync, unlink, unlinkSync } from 'fs';
+import {
+  createReadStream,
+  existsSync,
+  renameSync,
+  unlink,
+  unlinkSync,
+} from 'fs';
 
 @Injectable()
 export class UserService {
@@ -293,5 +299,21 @@ export class UserService {
     return this.update(id, {
       photo,
     });
+  }
+  async getPhoto(id: number) {
+    const { photo } = await this.get(id);
+
+    let filePath = this.getStoragePhotoPath('../nophoto.png');
+
+    if (photo) {
+      filePath = this.getStoragePhotoPath(photo);
+    }
+    const file = createReadStream(filePath);
+    const extension = filePath.split('.').pop();
+
+    return {
+      file,
+      extension,
+    };
   }
 }
