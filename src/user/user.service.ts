@@ -9,6 +9,8 @@ import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { parse } from 'date-fns';
 import { MailService } from 'src/mail/mail.service';
+import { join } from 'path';
+import { existsSync, renameSync, unlink, unlinkSync } from 'fs';
 
 @Injectable()
 export class UserService {
@@ -128,12 +130,14 @@ export class UserService {
       birthAt,
       phone,
       document,
+      photo,
     }: {
       name?: string;
       email?: string;
       birthAt?: Date;
       phone?: string;
       document?: string;
+      photo?: string;
     },
   ) {
     id = Number(id);
@@ -159,6 +163,9 @@ export class UserService {
     }
     if (email) {
       dataUser.email = email;
+    }
+    if (photo) {
+      dataUser.photo = photo;
     }
 
     const user = await this.get(id);
@@ -235,5 +242,56 @@ export class UserService {
     await this.checkPassword(id, currentPassword);
 
     return this.updatePassword(id, newPassword);
+  }
+
+  getStoragePhotoPath(photo: string) {
+    if (!photo) {
+      throw new BadRequestException('Photo is required.');
+    }
+    return join(__dirname, '../', '../', '../', 'storage', 'photos', photo);
+  }
+
+  async removePhoto(userId: number) {
+    const { photo } = await this.get(userId);
+
+    if (photo) {
+      const currentPhoto = this.getStoragePhotoPath(photo);
+
+      if (existsSync(currentPhoto)) {
+        unlinkSync(currentPhoto);
+      }
+    }
+    return this.update(userId, {
+      photo: null,
+    });
+  }
+
+  async setPhoto(id: number, file: Express.Multer.File) {
+    if (!['image/png', 'image/jpeg'].includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type.');
+    }
+
+    await this.removePhoto(id);
+
+    let ext = '';
+
+    switch (file.mimetype) {
+      case 'image/png':
+        ext = 'png';
+        break;
+      default:
+        ext = 'jpg';
+    }
+
+    const photo = `${file.filename}.${ext}`;
+
+    const from = this.getStoragePhotoPath(file.filename);
+    const to = this.getStoragePhotoPath(photo);
+
+    renameSync(from, to);
+
+    return this.update(id, {
+      photo,
+    });
   }
 }
